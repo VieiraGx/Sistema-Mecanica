@@ -58,6 +58,17 @@ export const App: React.FC = () => {
   };
 
   useEffect(() => {
+    // Eager Supabase connection check
+    Promise.resolve(
+      supabase.from('profiles').select('count', { count: 'exact', head: true })
+    ).then(({ error }) => {
+      if (error) {
+        console.info('Supabase ping status:', error.message);
+      } else {
+        console.info('Conexão com o Supabase estabelecida com sucesso.');
+      }
+    }).catch((err: any) => console.warn('Supabase ping warning:', err));
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session?.user) {
