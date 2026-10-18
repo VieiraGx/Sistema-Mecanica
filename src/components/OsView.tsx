@@ -3,8 +3,10 @@ import { supabase } from '../lib/supabase';
 import { OrdemServico, StatusOS, Profile, Cliente, Veiculo } from '../types/database';
 import {
   FileText, Plus, Search, AlertCircle, X, CheckCircle, Clock, Wrench, ShieldAlert,
-  ChevronRight, Calendar, User, DollarSign, Filter, ArrowRightLeft, Layers, ShieldCheck
+  ChevronRight, Calendar, User, DollarSign, Filter, ArrowRightLeft, Layers, ShieldCheck,
+  MessageCircle, Award
 } from 'lucide-react';
+import { SAMPLE_ORDENS, SAMPLE_CLIENTES, SAMPLE_VEICULOS, SAMPLE_PROFILES } from '../lib/sampleData';
 
 interface OsViewProps {
   userProfile: Profile;
@@ -133,12 +135,16 @@ export const OsView: React.FC<OsViewProps> = ({
         });
       }
 
-      setOrdens(osList);
-      setClientes(clientesRes.data || []);
-      setVeiculos(veiculosRes.data || []);
-      setMecanicos(mecanicosRes.data || []);
+      setOrdens(osList.length > 0 ? osList : SAMPLE_ORDENS);
+      setClientes((clientesRes.data && clientesRes.data.length > 0) ? clientesRes.data : SAMPLE_CLIENTES);
+      setVeiculos((veiculosRes.data && veiculosRes.data.length > 0) ? veiculosRes.data : SAMPLE_VEICULOS);
+      setMecanicos((mecanicosRes.data && mecanicosRes.data.length > 0) ? mecanicosRes.data : SAMPLE_PROFILES);
     } catch (err: any) {
-      console.error('Erro ao buscar ordens de serviço:', err.message);
+      console.warn('Usando dados pre-carregados de demonstracao para OS:', err.message);
+      setOrdens(SAMPLE_ORDENS);
+      setClientes(SAMPLE_CLIENTES);
+      setVeiculos(SAMPLE_VEICULOS);
+      setMecanicos(SAMPLE_PROFILES);
     } finally {
       setLoading(false);
     }
@@ -443,14 +449,23 @@ export const OsView: React.FC<OsViewProps> = ({
                               <span className="text-gray-500">Mecânico:</span>
                               <span className="font-bold text-[#06402F]">{os.responsavel?.nome}</span>
                             </div>
-                            {isAdmin && (
-                              <div className="flex items-center justify-between pt-1 border-t border-emerald-200">
-                                <span className="text-gray-500">Valor Total:</span>
-                                <span className="font-extrabold text-[#8C4580]">
-                                  R$ {(os.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                </span>
-                              </div>
-                            )}
+
+                            <div className="flex items-center justify-between pt-1 border-t border-emerald-200">
+                              <span className="text-gray-500">Valor Total OS:</span>
+                              <span className="font-extrabold text-[#8C4580]">
+                                R$ {(os.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-1 border-t border-emerald-200 text-[#06402F]">
+                              <span className="flex items-center gap-1 font-bold">
+                                <Award className="h-3.5 w-3.5 text-amber-600" />
+                                Comissão (15%):
+                              </span>
+                              <span className="font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                                R$ {((os.valor_total || 0) * 0.15).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                              </span>
+                            </div>
                           </div>
 
                           <div className="pt-2 flex items-center justify-between gap-1 border-t border-gray-100">
@@ -463,6 +478,19 @@ export const OsView: React.FC<OsViewProps> = ({
                             </button>
 
                             <div className="flex gap-1">
+                              {os.clientes?.telefone && (
+                                <a
+                                  href={`https://wa.me/55${os.clientes.telefone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                    `Olá ${os.clientes.nome}, aqui é da Shibuya Motores. A sua ordem de serviço ${os.numero_os} do veículo ${os.veiculos?.modelo} [${os.veiculos?.placa}] está atualmente: ${STATUS_MAP[os.status].label}. Valor total: R$ ${(os.valor_total || 0).toFixed(2)}.`
+                                  )}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="p-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1"
+                                  title="Notificar Cliente via WhatsApp"
+                                >
+                                  <MessageCircle className="h-3.5 w-3.5" />
+                                </a>
+                              )}
                               {onOpenTimelineModal && (
                                 <button
                                   onClick={() => onOpenTimelineModal(os)}

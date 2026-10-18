@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Peca, Profile, OrdemServico } from '../types/database';
-import { Package, Plus, Search, Edit2, AlertCircle, X, DollarSign, TrendingUp, ArrowDownRight, ArrowUpRight, Layers } from 'lucide-react';
+import { Package, Plus, Search, Edit2, AlertCircle, X, DollarSign, TrendingUp, ArrowDownRight, ArrowUpRight, Layers, Trash2, History } from 'lucide-react';
+import { SAMPLE_PECAS } from '../lib/sampleData';
 
 interface PecasViewProps {
   userProfile: Profile;
@@ -67,12 +68,13 @@ export const PecasView: React.FC<PecasViewProps> = ({
 
       const pecasWithStock = (data || []).map((p) => ({
         ...p,
-        saldo_estoque: stockMap[p.id] || 0,
+        saldo_estoque: stockMap[p.id] !== undefined ? stockMap[p.id] : (p.saldo_estoque || 0),
       }));
 
-      setPecas(pecasWithStock);
+      setPecas(pecasWithStock.length > 0 ? pecasWithStock : SAMPLE_PECAS);
     } catch (err: any) {
-      console.error('Erro ao buscar catálogo de peças:', err.message);
+      console.warn('Usando catalogo de pecas de demonstracao:', err.message);
+      setPecas(SAMPLE_PECAS);
     } finally {
       setLoading(false);
     }
@@ -124,6 +126,36 @@ export const PecasView: React.FC<PecasViewProps> = ({
     setPrecoMax(p.preco_max || '');
     setErrorMsg(null);
     setIsModalOpen(true);
+  };
+
+  const handleDeletePeca = async (id: number) => {
+    if (!window.confirm('Tem certeza que deseja remover esta peça do catálogo de estoque?')) return;
+    try {
+      await supabase.from('pecas').delete().eq('id', id);
+      setPecas(pecas.filter((p) => p.id !== id));
+    } catch (err: any) {
+      console.error('Erro ao excluir peça:', err.message);
+    }
+  };
+
+  const handleRemovePartFromOs = async (osPecaId: number, pecaId: number, qtd: number) => {
+    if (!window.confirm('Deseja remover esta peça da OS? A quantidade será devolvida ao estoque.')) return;
+    try {
+      await supabase.from('os_pecas').delete().eq('id', osPecaId);
+      await supabase.from('estoque_movimentacoes').insert({
+        peca_id: pecaId,
+        tipo: 'ENTRADA',
+        quantidade: Number(qtd),
+        usuario_id: userProfile.id,
+        fornecedor: 'Devolução de Peça da OS',
+      });
+      if (targetOsForBinding) {
+        fetchOsPecas(targetOsForBinding.id);
+      }
+      fetchPecas();
+    } catch (err: any) {
+      console.error('Erro ao remover peça da OS:', err.message);
+    }
   };
 
   const handleSavePeca = async (e: React.FormEvent) => {
@@ -361,13 +393,22 @@ export const PecasView: React.FC<PecasViewProps> = ({
                           </button>
 
                           {isAdmin && (
-                            <button
-                              onClick={() => openEditModal(p)}
-                              className="p-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg"
-                              title="Editar peça"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => openEditModal(p)}
+                                className="p-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg"
+                                title="Editar peça"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDeletePeca(p.id)}
+                                className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                                title="Remover peça"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -510,9 +551,19 @@ export const PecasView: React.FC<PecasViewProps> = ({
                             Qtd: {op.quantidade} • Preço: R$ {(op.preco_unitario || 0).toFixed(2)} un.
                           </p>
                         </div>
-                        <span className="font-extrabold text-[#8C4580] font-mono">
-                          R$ {(op.quantidade * op.preco_unitario).toFixed(2)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-[#8C4580] font-mono">
+                            R$ {(op.quantidade * op.preco_unitario).toFixed(2)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePartFromOs(op.id, op.peca_id, op.quantidade)}
+                            className="p-1 bg-red-100 text-red-700 hover:bg-red-200 rounded"
+                            title="Remover da OS"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

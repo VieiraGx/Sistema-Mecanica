@@ -10,6 +10,7 @@ import { VerificacaoPlacaView } from './components/VerificacaoPlacaView';
 import { OsTimelineModal } from './components/OsTimelineModal';
 import { PecasView } from './components/PecasView';
 import { DashboardView } from './components/DashboardView';
+import { PortalClienteView } from './components/PortalClienteView';
 import { Wrench } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -186,6 +187,12 @@ export const App: React.FC = () => {
           <DashboardView
             userProfile={userProfile}
             onNavigateTab={(tab) => setActiveTab(tab)}
+          />
+        )}
+
+        {activeTab === 'portal-cliente' && (
+          <PortalClienteView
+            onBackToApp={() => setActiveTab('os')}
           />
         )}
 
