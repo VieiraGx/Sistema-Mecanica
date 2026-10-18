@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { VerificacaoPlaca, Veiculo, Profile } from '../types/database';
-import { ShieldCheck, Plus, Search, AlertCircle, X, CheckCircle2, FileText, Calendar, MapPin, SearchCode } from 'lucide-react';
+import { ShieldCheck, Plus, Search, AlertCircle, X, CheckCircle2, FileText, Calendar, MapPin, SearchCode, Edit2, AlertTriangle } from 'lucide-react';
 import { SAMPLE_VERIFICACOES, SAMPLE_VEICULOS } from '../lib/sampleData';
 
 interface VerificacaoPlacaViewProps {
@@ -21,8 +21,10 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const [editingVerificacao, setEditingVerificacao] = useState<VerificacaoPlaca | null>(null);
   const [selectedVeiculoId, setSelectedVeiculoId] = useState<number | ''>('');
   const [observacao, setObservacao] = useState('');
+  const [statusSeguranca, setStatusSeguranca] = useState<'SEGURO' | 'ALERTA_FURTO'>('SEGURO');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -68,8 +70,19 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
   }, [targetVeiculo]);
 
   const openNewModal = () => {
+    setEditingVerificacao(null);
     setSelectedVeiculoId(veiculos.length > 0 ? veiculos[0].id : '');
     setObservacao('Consulta policial/SINEPAG ok sem restrições de roubo/furto.');
+    setStatusSeguranca('SEGURO');
+    setErrorMsg(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (v: VerificacaoPlaca) => {
+    setEditingVerificacao(v);
+    setSelectedVeiculoId(v.veiculo_id);
+    setObservacao(v.observacao || '');
+    setStatusSeguranca(v.observacao?.includes('ALERTA DE FURTO') ? 'ALERTA_FURTO' : 'SEGURO');
     setErrorMsg(null);
     setIsModalOpen(true);
   };
@@ -100,32 +113,52 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
         }
       }
 
-      const fullPayload = {
-        veiculo_id: Number(selectedVeiculoId),
-        responsavel_id: userProfile.id,
-        observacao: observacao.trim() || 'Verificação de placa ok.',
-        latitude: lat,
-        longitude: lng,
-        data_hora: new Date().toISOString(),
-      };
+      const finalObs = statusSeguranca === 'ALERTA_FURTO'
+        ? `⚠️ [ALERTA DE FURTO / ROUBO]: ${observacao.trim()}`
+        : observacao.trim() || 'Verificação de placa ok.';
 
-      const { error: fullErr } = await supabase
-        .from('verificacoes_placa')
-        .insert(fullPayload);
+      if (editingVerificacao) {
+        await supabase
+          .from('verificacoes_placa')
+          .update({
+            observacao: finalObs,
+          })
+          .eq('id', editingVerificacao.id);
 
-      if (fullErr) {
-        // Fallback without latitude/longitude if schema cache lacks latitude column
-        const simplePayload = {
+        setVerificacoes((prev) =>
+          prev.map((item) =>
+            item.id === editingVerificacao.id
+              ? { ...item, observacao: finalObs }
+              : item
+          )
+        );
+      } else {
+        const fullPayload = {
           veiculo_id: Number(selectedVeiculoId),
           responsavel_id: userProfile.id,
-          observacao: observacao.trim() || 'Verificação de placa ok.',
+          observacao: finalObs,
+          latitude: lat,
+          longitude: lng,
           data_hora: new Date().toISOString(),
         };
-        const { error: simpleErr } = await supabase
-          .from('verificacoes_placa')
-          .insert(simplePayload);
 
-        if (simpleErr) throw simpleErr;
+        const { error: fullErr } = await supabase
+          .from('verificacoes_placa')
+          .insert(fullPayload);
+
+        if (fullErr) {
+          const simplePayload = {
+            veiculo_id: Number(selectedVeiculoId),
+            responsavel_id: userProfile.id,
+            observacao: finalObs,
+            data_hora: new Date().toISOString(),
+          };
+          const { error: simpleErr } = await supabase
+            .from('verificacoes_placa')
+            .insert(simplePayload);
+
+          if (simpleErr) throw simpleErr;
+        }
       }
 
       await supabase
@@ -244,10 +277,27 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
                     </td>
 
                     <td className="p-4 text-center">
-                      <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-black border border-emerald-300">
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                        VERIFICADO
-                      </span>
+                      <div className="flex items-center justify-center gap-2">
+                        {v.observacao?.includes('ALERTA DE FURTO') ? (
+                          <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-900 px-3 py-1 rounded-full text-xs font-black border-2 border-amber-500 animate-pulse">
+                            <AlertTriangle className="h-4 w-4 text-amber-600" />
+                            ⚠️ ALERTA DE FURTO
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-xs font-black border border-emerald-300">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                            SEGURO
+                          </span>
+                        )}
+
+                        <button
+                          onClick={() => openEditModal(v)}
+                          className="p-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg"
+                          title="Modificar verificação"
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -315,25 +365,56 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-extrabold uppercase text-[#06402F] mb-1">
+                  Status de Segurança do Veículo *
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setStatusSeguranca('SEGURO')}
+                    className={`py-2.5 rounded-xl font-bold text-xs border-2 transition ${
+                      statusSeguranca === 'SEGURO'
+                        ? 'bg-emerald-600 text-white border-emerald-800'
+                        : 'bg-white text-gray-700 border-gray-300'
+                    }`}
+                  >
+                    ✓ STATUS SEGURO
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStatusSeguranca('ALERTA_FURTO');
+                      setObservacao('⚠️ Alerta registrado na base de auditoria: queixa de furto/roubo reportada.');
+                    }}
+                    className={`py-2.5 rounded-xl font-bold text-xs border-2 transition ${
+                      statusSeguranca === 'ALERTA_FURTO'
+                        ? 'bg-amber-500 text-white border-amber-700'
+                        : 'bg-white text-gray-700 border-gray-300'
+                    }`}
+                  >
+                    ⚠️ ALERTA DE FURTO
+                  </button>
+                </div>
+              </div>
+
               <div className="bg-emerald-50 p-3 rounded-xl border border-emerald-300 space-y-2">
                 <div className="flex items-center justify-between text-xs font-bold text-[#06402F]">
                   <span className="flex items-center gap-1">
                     <SearchCode className="h-4 w-4 text-[#8C4580]" />
-                    Consulta API Detran/SINESP em tempo real
+                    Consulta API Detran/SINESP
                   </span>
                   <button
                     type="button"
                     onClick={() => {
                       setObservacao('Consulta API Detran/SINESP concluída em tempo real. Veículo sem restrições policiais ou queixa de roubo/furto.');
+                      setStatusSeguranca('SEGURO');
                     }}
                     className="px-2 py-1 bg-[#8C4580] text-white rounded text-[11px] font-bold"
                   >
                     Consultar API
                   </button>
                 </div>
-                <p className="text-[11px] text-gray-600 font-medium">
-                  Clique no botão acima para consultar automaticamente a base nacional de dados de veículos.
-                </p>
               </div>
 
               <div>

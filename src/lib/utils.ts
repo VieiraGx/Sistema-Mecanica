@@ -20,10 +20,20 @@ export const matchesNormalizedSearch = (target?: string | null, search?: string 
   return searchTerms.every((term) => normalizeText(target).includes(normalizeText(term)));
 };
 
-export const generateLaudoText = (os: any): string => {
+export const generateLaudoText = (os: any, osPecas: any[] = []): string => {
   const dateStr = new Date(os.created_at || Date.now()).toLocaleDateString('pt-BR');
   const totalStr = (os.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
   const maoObraStr = (os.valor_mao_obra || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+  let pecasText = 'Nenhuma peça cadastrada neste orçamento.';
+  if (osPecas && osPecas.length > 0) {
+    pecasText = osPecas
+      .map(
+        (p) =>
+          `- ${p.pecas?.nome || 'Peça'} | Qtd: ${p.quantidade} | Unit: R$ ${(p.preco_unitario || 0).toFixed(2)} | Subtotal: R$ ${(p.quantidade * p.preco_unitario).toFixed(2)}`
+      )
+      .join('\n');
+  }
 
   return `
 ==================================================
@@ -50,13 +60,16 @@ Mecânico: ${os.responsavel?.nome || 'Equipe Shibuya'}
 DETALHAMENTO DO SERVIÇO:
 - Tipo de Serviço: ${os.tipos_servico?.join(', ') || 'Mecânica/Funilaria'}
 - Status Atual: ${os.status}
-- Mão de Obra: R$ ${maoObraStr}
+- Mão de Obra de Reparo: R$ ${maoObraStr}
+
+PEÇAS E COMPONENTES UTILIZADOS:
+${pecasText}
 
 ==================================================
-VALOR TOTAL DO ORÇAMENTO: R$ ${totalStr}
+VALOR TOTAL TRANSMITIDO AO CLIENTE: R$ ${totalStr}
 ==================================================
 
 Shibuya Motores — Bragança Paulista, SP
-Telefone: (11) 98765-4321
+Atendimento e Transparência Garantidos
 `.trim();
 };
