@@ -16,9 +16,23 @@ export interface Profile {
   nome: string;
   email: string;
   perfil: UserPerfil;
+  mecanica_id?: string | null;
   ativo: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface EstoqueMovimentacao {
+  id: number;
+  peca_id: number;
+  tipo: 'ENTRADA' | 'SAIDA' | 'COMPRA' | 'CONSUMO';
+  quantidade: number;
+  lote?: string | null;
+  fornecedor?: string | null;
+  usuario_id?: string | null;
+  os_id?: number | null;
+  created_at: string;
+  pecas?: Peca;
 }
 
 export interface Cliente {
@@ -117,6 +131,8 @@ export interface VerificacaoPlaca {
   data_hora: string;
   responsavel_id: string;
   observacao?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   created_at: string;
   veiculos?: Veiculo;
   responsavel?: Profile;

@@ -11,6 +11,8 @@ export const AuthView: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nome, setNome] = useState('');
+  const [perfil, setPerfil] = useState<'MECANICO' | 'ADMINISTRADOR'>('MECANICO');
+  const [mecanicaNome, setMecanicaNome] = useState('Mecânica e Funilaria Raul');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -46,7 +48,8 @@ export const AuthView: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
               id: data.user.id,
               nome: nome,
               email: email,
-              perfil: 'MECANICO',
+              perfil: perfil,
+              mecanica_id: mecanicaNome.toLowerCase().includes('raul') ? 'mec-raul' : 'mec-shibuya',
             }, { onConflict: 'id' });
 
           if (profileError) {
@@ -54,10 +57,21 @@ export const AuthView: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
           }
         }
 
-        setSuccessMsg('Cadastro realizado com sucesso! Você já pode acessar.');
+        // Auto login immediately without email verification block
+        const { error: loginErr } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (!loginErr) {
+          onAuthSuccess();
+          return;
+        }
+
+        setSuccessMsg('Cadastro realizado com sucesso! Acesso liberado sem necessidade de verificação.');
         setTimeout(() => {
           setIsSignUp(false);
-        }, 1500);
+        }, 1200);
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -117,22 +131,54 @@ export const AuthView: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {isSignUp && (
-              <div>
-                <label className="block text-xs font-bold uppercase text-[#06402F] mb-1.5">
-                  Nome Completo
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-500" />
-                  <input
-                    type="text"
-                    required
-                    value={nome}
-                    onChange={(e) => setNome(e.target.value)}
-                    placeholder="Seu nome"
-                    className="w-full bg-white border-2 border-[#125938] rounded-xl pl-11 pr-4 py-3 font-semibold focus:outline-none focus:border-[#8C4580]"
-                  />
+              <>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-[#06402F] mb-1.5">
+                    Nome Completo
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-3.5 h-5 w-5 text-gray-500" />
+                    <input
+                      type="text"
+                      required
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      placeholder="Seu nome"
+                      className="w-full bg-white border-2 border-[#125938] rounded-xl pl-11 pr-4 py-3 font-semibold focus:outline-none focus:border-[#8C4580]"
+                    />
+                  </div>
                 </div>
-              </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-[#06402F] mb-1.5">
+                      Perfil Acesso
+                    </label>
+                    <select
+                      value={perfil}
+                      onChange={(e) => setPerfil(e.target.value as any)}
+                      className="w-full bg-white border-2 border-[#125938] rounded-xl px-3 py-3 font-bold text-sm text-[#06402F]"
+                    >
+                      <option value="MECANICO">Mecânico</option>
+                      <option value="ADMINISTRADOR">Administrador</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-[#06402F] mb-1.5">
+                      Oficina / Mecânica
+                    </label>
+                    <select
+                      value={mecanicaNome}
+                      onChange={(e) => setMecanicaNome(e.target.value)}
+                      className="w-full bg-white border-2 border-[#125938] rounded-xl px-3 py-3 font-bold text-sm text-[#06402F]"
+                    >
+                      <option value="Mecânica e Funilaria Raul">Mecânica do Raul</option>
+                      <option value="Shibuya Motores Central">Shibuya Motores Central</option>
+                    </select>
+                  </div>
+                </div>
+              </>
             )}
 
             <div>
