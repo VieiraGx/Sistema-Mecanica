@@ -12,7 +12,6 @@ export const AuthView: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
   const [password, setPassword] = useState('');
   const [nome, setNome] = useState('');
   const [perfil, setPerfil] = useState<'MECANICO' | 'ADMINISTRADOR'>('MECANICO');
-  const [mecanicaNome, setMecanicaNome] = useState('Mecânica e Funilaria Raul');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -49,7 +48,7 @@ export const AuthView: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
               nome: nome,
               email: email,
               perfil: perfil,
-              mecanica_id: mecanicaNome.toLowerCase().includes('raul') ? 'mec-raul' : 'mec-shibuya',
+              mecanica_id: 'shibuya-motores-central',
             }, { onConflict: 'id' });
 
           if (profileError) {
@@ -149,34 +148,18 @@ export const AuthView: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-[#06402F] mb-1.5">
-                      Perfil Acesso
-                    </label>
-                    <select
-                      value={perfil}
-                      onChange={(e) => setPerfil(e.target.value as any)}
-                      className="w-full bg-white border-2 border-[#125938] rounded-xl px-3 py-3 font-bold text-sm text-[#06402F]"
-                    >
-                      <option value="MECANICO">Mecânico</option>
-                      <option value="ADMINISTRADOR">Administrador</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold uppercase text-[#06402F] mb-1.5">
-                      Oficina / Mecânica
-                    </label>
-                    <select
-                      value={mecanicaNome}
-                      onChange={(e) => setMecanicaNome(e.target.value)}
-                      className="w-full bg-white border-2 border-[#125938] rounded-xl px-3 py-3 font-bold text-sm text-[#06402F]"
-                    >
-                      <option value="Mecânica e Funilaria Raul">Mecânica do Raul</option>
-                      <option value="Shibuya Motores Central">Shibuya Motores Central</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-[#06402F] mb-1.5">
+                    Perfil Acesso
+                  </label>
+                  <select
+                    value={perfil}
+                    onChange={(e) => setPerfil(e.target.value as any)}
+                    className="w-full bg-white border-2 border-[#125938] rounded-xl px-4 py-3 font-bold text-sm text-[#06402F]"
+                  >
+                    <option value="MECANICO">Mecânico</option>
+                    <option value="ADMINISTRADOR">Administrador</option>
+                  </select>
                 </div>
               </>
             )}

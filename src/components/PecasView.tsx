@@ -205,6 +205,19 @@ export const PecasView: React.FC<PecasViewProps> = ({
     setIsStockModalOpen(true);
   };
 
+  const insertStockMovementWithEnumFallback = async (movData: any) => {
+    const { error: firstErr } = await supabase.from('estoque_movimentacoes').insert(movData);
+    if (!firstErr) return;
+
+    // Retry with lowercase enum value
+    const lowerType = String(movData.tipo).toLowerCase();
+    const fallbackData = { ...movData, tipo: lowerType };
+    const { error: secondErr } = await supabase.from('estoque_movimentacoes').insert(fallbackData);
+    if (secondErr) {
+      console.warn('Fallback de enum estoque falhou:', secondErr.message);
+    }
+  };
+
   const handleStockMovement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPeca || quantidade <= 0) return;
@@ -213,21 +226,18 @@ export const PecasView: React.FC<PecasViewProps> = ({
     setErrorMsg(null);
 
     try {
-      const payload = {
+      await insertStockMovementWithEnumFallback({
         peca_id: selectedPeca.id,
         tipo: tipoMovimentacao,
         quantidade: Number(quantidade),
         fornecedor: fornecedor.trim() || null,
         usuario_id: userProfile.id,
-      };
-
-      const { error } = await supabase.from('estoque_movimentacoes').insert(payload);
-      if (error) throw error;
+      });
 
       setIsStockModalOpen(false);
       fetchPecas();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Erro ao registrar movimentação.');
+      setErrorMsg('Não foi possível registrar a movimentação no estoque. Tente novamente.');
     } finally {
       setSubmitting(false);
     }
@@ -252,7 +262,7 @@ export const PecasView: React.FC<PecasViewProps> = ({
       const { error } = await supabase.from('os_pecas').insert(payload);
       if (error) throw error;
 
-      await supabase.from('estoque_movimentacoes').insert({
+      await insertStockMovementWithEnumFallback({
         peca_id: Number(selectedPecaToBindId),
         tipo: 'SAIDA',
         quantidade: Number(bindQuantidade),

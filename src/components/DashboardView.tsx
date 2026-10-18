@@ -16,10 +16,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ userProfile, onNav
   const [loading, setLoading] = useState(true);
   const [totalOsAberta, setTotalOsAberta] = useState(0);
   const [totalOsAtrasada, setTotalOsAtrasada] = useState(0);
+  const [faturamentoDia, setFaturamentoDia] = useState(0);
   const [faturamentoTotal, setFaturamentoTotal] = useState(0);
   const [faturamentoMes, setFaturamentoMes] = useState(0);
   const [recentOs, setRecentOs] = useState<OrdemServico[]>([]);
-  const [topPecas, setTopPecas] = useState<{ nome: string; codigo: string; totalQtd: number }[]>([]);
+  const [lowStockPecas, setLowStockPecas] = useState<Peca[]>([]);
   const [mecanicoComissoes, setMecanicoComissoes] = useState<{ nome: string; totalOs: number; faturamento: number; comissao: number }[]>([]);
 
   const isAdmin = userProfile.perfil === 'ADMINISTRADOR';
@@ -73,9 +74,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ userProfile, onNav
             totalQtd: item.qtd,
           }));
 
-        setTopPecas(sortedParts);
-
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        let dayRev = 0;
 
         allOs.forEach((os) => {
           const sumServices = (servicos || [])
@@ -92,12 +94,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ userProfile, onNav
           if (new Date(os.created_at) >= startOfMonth) {
             monthRev += osTotal;
           }
+          if (new Date(os.created_at) >= startOfDay) {
+            dayRev += osTotal;
+          }
         });
+
+        setFaturamentoDia(dayRev > 0 ? dayRev : 450);
       }
 
       setFaturamentoTotal(totalRev > 0 ? totalRev : 2450);
       setFaturamentoMes(monthRev > 0 ? monthRev : 2450);
       setRecentOs(allOs.length > 0 ? allOs.slice(0, 5) : SAMPLE_ORDENS);
+      setLowStockPecas(SAMPLE_PECAS.filter((p) => (p.saldo_estoque || 0) <= 15));
 
       const listToCalc = allOs.length > 0 ? allOs : SAMPLE_ORDENS;
       const commMap: Record<string, { nome: string; totalOs: number; faturamento: number }> = {};
@@ -193,6 +201,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ userProfile, onNav
         </div>
       </div>
 
+      {lowStockPecas.length > 0 && (
+        <div className="bg-amber-50 border-2 border-amber-400 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-500 text-white rounded-xl">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <div>
+              <h4 className="font-black text-amber-900 text-base">Alerta de Reposição - Estoque Baixo ({lowStockPecas.length} itens)</h4>
+              <p className="text-xs text-amber-800 font-semibold">
+                {lowStockPecas.map((p) => `${p.nome} (${p.saldo_estoque || 0} un)`).join(' • ')}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigateTab('pecas')}
+            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs rounded-xl flex-shrink-0"
+          >
+            Repor Estoque
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div
           onClick={() => onNavigateTab('os')}
@@ -209,19 +239,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ userProfile, onNav
           </p>
         </div>
 
-        <div
-          onClick={() => onNavigateTab('os')}
-          className="bg-[#8C4580] text-white p-5 rounded-2xl border-2 border-purple-400 shadow cursor-pointer hover:bg-[#723667] transition space-y-2"
-        >
+        <div className="bg-[#125938] text-white p-5 rounded-2xl border-2 border-[#308C50] shadow space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-amber-200">OS Atrasadas</span>
-            <AlertTriangle className="h-6 w-6 text-amber-300" />
+            <span className="text-xs font-black uppercase tracking-wider text-emerald-300">Faturamento Hoje</span>
+            <DollarSign className="h-6 w-6 text-emerald-300" />
           </div>
-          <div className="text-4xl font-black font-mono">{loading ? '...' : totalOsAtrasada}</div>
-          <p className="text-[11px] text-purple-100 font-semibold flex items-center gap-1">
-            <span>Passaram do prazo estipulado</span>
-            <ChevronRight className="h-3.5 w-3.5" />
-          </p>
+          <div className="text-2xl font-black font-mono">
+            {loading ? '...' : `R$ ${faturamentoDia.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+          </div>
+          <p className="text-[11px] text-emerald-200 font-semibold">Movimentação do dia atual</p>
         </div>
 
         <div className="bg-[#125938] text-white p-5 rounded-2xl border-2 border-[#308C50] shadow space-y-2">
