@@ -140,16 +140,86 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ userProfile, onNav
   };
 
   const handleExportClosure = () => {
-    const headers = 'ID,Numero OS,Cliente,Veiculo,Mecanico,Status,Valor Total,Comissao (15%)\n';
-    const rows = recentOs.map((o) =>
-      `"${o.id}","${o.numero_os}","${o.clientes?.nome || ''}","${o.veiculos?.placa || ''}","${o.responsavel?.nome || ''}","${o.status}","${(o.valor_total || 0).toFixed(2)}","${((o.valor_total || 0) * 0.15).toFixed(2)}"`
-    ).join('\n');
+    const today = new Date().toLocaleDateString('pt-BR');
+    const period = new Date().toISOString().slice(0, 7);
 
-    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    let html = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          body { font-family: Arial, sans-serif; background-color: #F7F7E6; }
+          table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+          th, td { border: 1px solid #06402F; padding: 10px; text-align: left; }
+          .title-header { background-color: #032326; color: #FFFFFF; font-size: 16pt; font-weight: bold; text-align: center; }
+          .sub-header { background-color: #125938; color: #FFFFFF; font-size: 11pt; font-weight: bold; }
+          .col-header { background-color: #8C4580; color: #FFFFFF; font-size: 11pt; font-weight: bold; text-align: center; }
+          .row-even { background-color: #F7F7E6; }
+          .row-odd { background-color: #FFFFFF; }
+          .total-row { background-color: #125938; color: #FFFFFF; font-weight: bold; font-size: 12pt; }
+          .currency { text-align: right; font-family: monospace; }
+        </style>
+      </head>
+      <body>
+        <table>
+          <tr>
+            <th colspan="8" class="title-header">SHIBUYA MOTORES - RELATÓRIO DE FECHAMENTO MENSAL (${period})</th>
+          </tr>
+          <tr>
+            <td colspan="8" class="sub-header">Data de Emissão: ${today} | Responsável: Administrador</td>
+          </tr>
+          <tr>
+            <th class="col-header">ID OS</th>
+            <th class="col-header">Nº OS</th>
+            <th class="col-header">Cliente</th>
+            <th class="col-header">Veículo / Placa</th>
+            <th class="col-header">Mecânico Responsável</th>
+            <th class="col-header">Status</th>
+            <th class="col-header">Valor Total (R$)</th>
+            <th class="col-header">Comissão Mecânico (15%)</th>
+          </tr>
+    `;
+
+    let totalGeral = 0;
+    let totalComissao = 0;
+
+    recentOs.forEach((o, index) => {
+      const val = Number(o.valor_total || 0);
+      const com = val * 0.15;
+      totalGeral += val;
+      totalComissao += com;
+      const rowClass = index % 2 === 0 ? 'row-even' : 'row-odd';
+
+      html += `
+        <tr class="${rowClass}">
+          <td>${o.id}</td>
+          <td><b>${o.numero_os}</b></td>
+          <td>${o.clientes?.nome || 'N/I'}</td>
+          <td>${o.veiculos?.placa ? `${o.veiculos.modelo || ''} [${o.veiculos.placa}]` : 'N/I'}</td>
+          <td>${o.responsavel?.nome || 'João Santos'}</td>
+          <td>${o.status}</td>
+          <td class="currency">R$ ${val.toFixed(2)}</td>
+          <td class="currency">R$ ${com.toFixed(2)}</td>
+        </tr>
+      `;
+    });
+
+    html += `
+          <tr class="total-row">
+            <td colspan="6" style="text-align: right;"><b>TOTAL ACUMULADO DO PERÍODO:</b></td>
+            <td class="currency"><b>R$ ${totalGeral.toFixed(2)}</b></td>
+            <td class="currency"><b>R$ ${totalComissao.toFixed(2)}</b></td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Fechamento_Mensal_ShibuyaMotores_${new Date().toISOString().slice(0, 7)}.csv`);
+    link.setAttribute('download', `Fechamento_Mensal_Shibuya_Motores_${period}.xls`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

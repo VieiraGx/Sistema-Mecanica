@@ -286,8 +286,19 @@ export const OsView: React.FC<OsViewProps> = ({
     }
   };
 
-  const handleDownloadLaudo = (os: OrdemServico) => {
-    const content = generateLaudoText(os);
+  const handleDownloadLaudo = async (os: OrdemServico) => {
+    let attachedParts: any[] = [];
+    try {
+      const { data } = await supabase
+        .from('os_pecas')
+        .select('*, pecas(*)')
+        .eq('os_id', os.id);
+      attachedParts = data || [];
+    } catch (err) {
+      console.warn('Erro ao buscar pecas para orcamento:', err);
+    }
+
+    const content = generateLaudoText(os, attachedParts);
     const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

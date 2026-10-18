@@ -59,7 +59,8 @@ export const PecasView: React.FC<PecasViewProps> = ({
       const stockMap: Record<number, number> = {};
       (movData || []).forEach((m: any) => {
         if (!stockMap[m.peca_id]) stockMap[m.peca_id] = 0;
-        if (m.tipo === 'ENTRADA' || m.tipo === 'COMPRA') {
+        const tipoUpper = String(m.tipo || '').toUpperCase();
+        if (tipoUpper === 'ENTRADA' || tipoUpper === 'COMPRA') {
           stockMap[m.peca_id] += Number(m.quantidade);
         } else {
           stockMap[m.peca_id] -= Number(m.quantidade);
@@ -128,6 +129,22 @@ export const PecasView: React.FC<PecasViewProps> = ({
     setIsModalOpen(true);
   };
 
+  const updatePartStockBalance = async (pecaId: number, delta: number) => {
+    const part = pecas.find((p) => p.id === pecaId);
+    const currentSaldo = part?.saldo_estoque || 0;
+    const newSaldo = Math.max(0, currentSaldo + delta);
+
+    setPecas((prev) =>
+      prev.map((p) => (p.id === pecaId ? { ...p, saldo_estoque: newSaldo } : p))
+    );
+
+    try {
+      await supabase.from('pecas').update({ saldo_estoque: newSaldo }).eq('id', pecaId);
+    } catch (err) {
+      console.warn('Atualizacao de saldo_estoque na tabela pecas falhou:', err);
+    }
+  };
+
   const handleDeletePeca = async (id: number) => {
     if (!window.confirm('Tem certeza que deseja remover esta peça do catálogo de estoque?')) return;
     try {
@@ -142,13 +159,14 @@ export const PecasView: React.FC<PecasViewProps> = ({
     if (!window.confirm('Deseja remover esta peça da OS? A quantidade será devolvida ao estoque.')) return;
     try {
       await supabase.from('os_pecas').delete().eq('id', osPecaId);
-      await supabase.from('estoque_movimentacoes').insert({
+      await insertStockMovementWithEnumFallback({
         peca_id: pecaId,
         tipo: 'ENTRADA',
         quantidade: Number(qtd),
         usuario_id: userProfile.id,
         fornecedor: 'Devolução de Peça da OS',
       });
+      await updatePartStockBalance(pecaId, Number(qtd));
       if (targetOsForBinding) {
         fetchOsPecas(targetOsForBinding.id);
       }
@@ -234,6 +252,9 @@ export const PecasView: React.FC<PecasViewProps> = ({
         usuario_id: userProfile.id,
       });
 
+      const delta = tipoMovimentacao === 'ENTRADA' ? Number(quantidade) : -Number(quantidade);
+      await updatePartStockBalance(selectedPeca.id, delta);
+
       setIsStockModalOpen(false);
       fetchPecas();
     } catch (err: any) {
@@ -270,6 +291,8 @@ export const PecasView: React.FC<PecasViewProps> = ({
         usuario_id: userProfile.id,
         fornecedor: bindFornecedor.trim() || null,
       });
+
+      await updatePartStockBalance(Number(selectedPecaToBindId), -Number(bindQuantidade));
 
       setSelectedPecaToBindId('');
       setBindQuantidade(1);
