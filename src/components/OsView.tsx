@@ -4,9 +4,10 @@ import { OrdemServico, StatusOS, Profile, Cliente, Veiculo } from '../types/data
 import {
   FileText, Plus, Search, AlertCircle, X, CheckCircle, Clock, Wrench, ShieldAlert,
   ChevronRight, Calendar, User, DollarSign, Filter, ArrowRightLeft, Layers, ShieldCheck,
-  MessageCircle, Award
+  MessageCircle, Award, FileSpreadsheet, Download, AlertTriangle
 } from 'lucide-react';
 import { SAMPLE_ORDENS, SAMPLE_CLIENTES, SAMPLE_VEICULOS, SAMPLE_PROFILES } from '../lib/sampleData';
+import { matchesNormalizedSearch, generateLaudoText } from '../lib/utils';
 
 interface OsViewProps {
   userProfile: Profile;
@@ -285,17 +286,36 @@ export const OsView: React.FC<OsViewProps> = ({
     }
   };
 
+  const handleDownloadLaudo = (os: OrdemServico) => {
+    const content = generateLaudoText(os);
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Orcamento_${os.numero_os}_${os.veiculos?.placa || 'Veiculo'}.txt`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getDaysStalled = (os: OrdemServico): number => {
+    const entryDate = new Date(os.updated_at || os.created_at || os.data_entrada);
+    const diffTime = Math.abs(Date.now() - entryDate.getTime());
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  };
+
   const filteredOrdens = ordens.filter((os) => {
     const matchesStatus = statusFilter === 'ALL' ? true : os.status === statusFilter;
-    const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      !term ||
-      os.numero_os.toLowerCase().includes(term) ||
-      os.veiculos?.placa.toLowerCase().includes(term) ||
-      os.veiculos?.modelo.toLowerCase().includes(term) ||
-      os.clientes?.nome.toLowerCase().includes(term);
+    if (!matchesStatus) return false;
 
-    return matchesStatus && matchesSearch;
+    if (!searchTerm || !searchTerm.trim()) return true;
+
+    return (
+      matchesNormalizedSearch(os.numero_os, searchTerm) ||
+      matchesNormalizedSearch(os.veiculos?.placa, searchTerm) ||
+      matchesNormalizedSearch(os.veiculos?.modelo, searchTerm) ||
+      matchesNormalizedSearch(os.clientes?.nome, searchTerm)
+    );
   });
 
   return (
@@ -444,6 +464,13 @@ export const OsView: React.FC<OsViewProps> = ({
                             </div>
                           )}
 
+                          {getDaysStalled(os) >= 5 && os.status !== 'ENTREGUE' && (
+                            <div className="p-2 bg-red-100 border border-red-400 rounded-lg text-[11px] text-red-900 font-black flex items-center gap-1">
+                              <AlertTriangle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />
+                              <span>⚠️ OS Parada há {getDaysStalled(os)} dias sem alteração</span>
+                            </div>
+                          )}
+
                           <div className="text-xs text-gray-700 font-semibold space-y-1 bg-emerald-50/60 p-2 rounded-lg border border-emerald-200">
                             <div className="flex items-center justify-between">
                               <span className="text-gray-500">Mecânico:</span>
@@ -478,6 +505,14 @@ export const OsView: React.FC<OsViewProps> = ({
                             </button>
 
                             <div className="flex gap-1">
+                              <button
+                                onClick={() => handleDownloadLaudo(os)}
+                                className="p-1.5 bg-[#06402F] text-white hover:bg-[#125938] rounded-lg text-xs font-bold"
+                                title="Gerar Orçamento / Laudo PDF"
+                              >
+                                <Download className="h-3.5 w-3.5 text-[#8C4580]" />
+                              </button>
+
                               {os.clientes?.telefone && (
                                 <a
                                   href={`https://wa.me/55${os.clientes.telefone.replace(/\D/g, '')}?text=${encodeURIComponent(

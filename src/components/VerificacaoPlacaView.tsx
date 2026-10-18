@@ -100,7 +100,7 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
         }
       }
 
-      const payload = {
+      const fullPayload = {
         veiculo_id: Number(selectedVeiculoId),
         responsavel_id: userProfile.id,
         observacao: observacao.trim() || 'Verificação de placa ok.',
@@ -109,11 +109,24 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
         data_hora: new Date().toISOString(),
       };
 
-      const { error } = await supabase
+      const { error: fullErr } = await supabase
         .from('verificacoes_placa')
-        .insert(payload);
+        .insert(fullPayload);
 
-      if (error) throw error;
+      if (fullErr) {
+        // Fallback without latitude/longitude if schema cache lacks latitude column
+        const simplePayload = {
+          veiculo_id: Number(selectedVeiculoId),
+          responsavel_id: userProfile.id,
+          observacao: observacao.trim() || 'Verificação de placa ok.',
+          data_hora: new Date().toISOString(),
+        };
+        const { error: simpleErr } = await supabase
+          .from('verificacoes_placa')
+          .insert(simplePayload);
+
+        if (simpleErr) throw simpleErr;
+      }
 
       await supabase
         .from('ordens_servico')
@@ -124,7 +137,7 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
       if (onClearTargetVeiculo) onClearTargetVeiculo();
       fetchData();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Erro ao registrar verificação.');
+      setErrorMsg('Não foi possível registrar a consulta da placa no momento. Tente novamente.');
     } finally {
       setSubmitting(false);
     }

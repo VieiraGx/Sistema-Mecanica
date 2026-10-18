@@ -14,7 +14,8 @@ import {
   Search,
   ExternalLink
 } from 'lucide-react';
-import { SAMPLE_VEICULOS } from '../lib/sampleData';
+import { SAMPLE_VEICULOS, SAMPLE_CLIENTES } from '../lib/sampleData';
+import { matchesNormalizedSearch } from '../lib/utils';
 import { Profile } from '../types/database';
 
 interface NavbarProps {
@@ -43,7 +44,7 @@ export const Layout: React.FC<NavbarProps> = ({
   const navItems = [
     { id: 'os', label: 'Ordens de Serviço', icon: FileText, show: true },
     { id: 'veiculos', label: 'Veículos', icon: Car, show: true },
-    { id: 'clientes', label: 'Clientes', icon: Users, show: isAdmin },
+    { id: 'clientes', label: 'Clientes', icon: Users, show: true },
     { id: 'pecas', label: 'Peças & Estoque', icon: Package, show: true },
     { id: 'verificacao', label: 'Auditoria Placas', icon: ShieldCheck, show: isAdmin },
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, show: isAdmin },
@@ -53,8 +54,9 @@ export const Layout: React.FC<NavbarProps> = ({
   const plateMatches = searchTerm.trim()
     ? SAMPLE_VEICULOS.filter(
         (v) =>
-          v.placa.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          v.modelo.toLowerCase().includes(searchTerm.toLowerCase())
+          matchesNormalizedSearch(v.placa, searchTerm) ||
+          matchesNormalizedSearch(v.modelo, searchTerm) ||
+          matchesNormalizedSearch(v.clientes?.nome, searchTerm)
       )
     : [];
 

@@ -145,15 +145,13 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ userProfile, onViewV
           </p>
         </div>
 
-        {isAdmin && (
-          <button
-            onClick={openNewModal}
-            className="btn-touch bg-[#8C4580] hover:bg-[#723667] text-white font-bold rounded-xl shadow flex items-center justify-center gap-2"
-          >
-            <Plus className="h-5 w-5" />
-            <span>NOVO CLIENTE</span>
-          </button>
-        )}
+        <button
+          onClick={openNewModal}
+          className="btn-touch bg-[#8C4580] hover:bg-[#723667] text-white font-bold rounded-xl shadow flex items-center justify-center gap-2"
+        >
+          <Plus className="h-5 w-5" />
+          <span>NOVO CLIENTE</span>
+        </button>
       </div>
 
       <div className="relative">
