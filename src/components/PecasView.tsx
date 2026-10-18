@@ -59,7 +59,8 @@ export const PecasView: React.FC<PecasViewProps> = ({
       const stockMap: Record<number, number> = {};
       (movData || []).forEach((m: any) => {
         if (!stockMap[m.peca_id]) stockMap[m.peca_id] = 0;
-        if (m.tipo === 'ENTRADA' || m.tipo === 'COMPRA') {
+        const tipoUpper = String(m.tipo || '').toUpperCase();
+        if (tipoUpper === 'ENTRADA' || tipoUpper === 'COMPRA') {
           stockMap[m.peca_id] += Number(m.quantidade);
         } else {
           stockMap[m.peca_id] -= Number(m.quantidade);
