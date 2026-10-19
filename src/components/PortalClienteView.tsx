@@ -12,19 +12,50 @@ export const PortalClienteView: React.FC<PortalClienteViewProps> = ({ onBackToAp
   const [searchTerm, setSearchTerm] = useState('');
   const [foundOs, setFoundOs] = useState<OrdemServico | null>(null);
   const [searched, setSearched] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchTerm.trim()) return;
 
     const term = searchTerm.trim().toLowerCase();
-    const result = SAMPLE_ORDENS.find(
+    setLoading(true);
+
+    try {
+      const { supabase } = await import('../lib/supabase');
+      const { data, error } = await supabase
+        .from('ordens_servico')
+        .select('*, clientes(*), veiculos(*)')
+        .order('id', { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        const found = data.find(
+          (o: any) =>
+            o.numero_os.toLowerCase().includes(term) ||
+            (o.veiculos?.placa && o.veiculos.placa.toLowerCase().includes(term)) ||
+            (o.clientes?.nome && o.clientes.nome.toLowerCase().includes(term))
+        );
+
+        if (found) {
+          setFoundOs(found);
+          setSearched(true);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Consulta ao Supabase no portal falhou, usando dados de demonstracao:', err);
+    } finally {
+      setLoading(false);
+    }
+
+    const fallbackResult = SAMPLE_ORDENS.find(
       (o) =>
         o.numero_os.toLowerCase().includes(term) ||
-        (o.veiculos?.placa && o.veiculos.placa.toLowerCase().includes(term))
+        (o.veiculos?.placa && o.veiculos.placa.toLowerCase().includes(term)) ||
+        (o.clientes?.nome && o.clientes.nome.toLowerCase().includes(term))
     );
 
-    setFoundOs(result || null);
+    setFoundOs(fallbackResult || null);
     setSearched(true);
   };
 
@@ -74,9 +105,10 @@ export const PortalClienteView: React.FC<PortalClienteViewProps> = ({ onBackToAp
           </div>
           <button
             type="submit"
+            disabled={loading}
             className="w-full btn-touch bg-[#8C4580] hover:bg-[#723667] text-white font-black text-lg rounded-xl shadow"
           >
-            CONSULTAR ANDAMENTO
+            {loading ? 'CONSULTANDO...' : 'CONSULTAR ANDAMENTO'}
           </button>
         </form>
 
@@ -88,6 +120,11 @@ export const PortalClienteView: React.FC<PortalClienteViewProps> = ({ onBackToAp
 
         {foundOs && (
           <div className="bg-white p-6 rounded-2xl border-2 border-[#06402F] space-y-5 shadow-lg">
+            {(foundOs.status === 'PRONTO_PARA_ENTREGA' || foundOs.status === 'ENTREGUE') && (
+              <div className="p-4 bg-emerald-600 text-white font-black rounded-xl text-center text-sm shadow animate-bounce">
+                🎉 VEÍCULO PRONTO PARA RETIRADA NA SHIBUYA MOTORES!
+              </div>
+            )}
             <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-4">
               <div>
                 <span className="font-mono font-black text-xs text-[#8C4580] bg-purple-50 px-2 py-0.5 rounded border border-purple-200">

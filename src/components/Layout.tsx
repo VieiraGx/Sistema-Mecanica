@@ -51,14 +51,45 @@ export const Layout: React.FC<NavbarProps> = ({
     { id: 'portal-cliente', label: 'Portal do Cliente', icon: ExternalLink, show: true },
   ];
 
-  const plateMatches = searchTerm.trim()
-    ? SAMPLE_VEICULOS.filter(
-        (v) =>
-          matchesNormalizedSearch(v.placa, searchTerm) ||
-          matchesNormalizedSearch(v.modelo, searchTerm) ||
-          matchesNormalizedSearch(v.clientes?.nome, searchTerm)
-      )
-    : [];
+  const [searchResults, setSearchResults] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (!searchTerm.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      const term = searchTerm.trim();
+      try {
+        const { supabase } = await import('../lib/supabase');
+        const [veicRes, osRes] = await Promise.all([
+          supabase.from('veiculos').select('*, clientes(*)'),
+          supabase.from('ordens_servico').select('*, clientes(*), veiculos(*)'),
+        ]);
+
+        const allVeic = veicRes.data && veicRes.data.length > 0 ? veicRes.data : SAMPLE_VEICULOS;
+        const matched = allVeic.filter(
+          (v: any) =>
+            matchesNormalizedSearch(v.placa, term) ||
+            matchesNormalizedSearch(v.modelo, term) ||
+            matchesNormalizedSearch(v.clientes?.nome, term)
+        );
+
+        setSearchResults(matched);
+      } catch (err) {
+        const fallback = SAMPLE_VEICULOS.filter(
+          (v) =>
+            matchesNormalizedSearch(v.placa, term) ||
+            matchesNormalizedSearch(v.modelo, term) ||
+            matchesNormalizedSearch(v.clientes?.nome, term)
+        );
+        setSearchResults(fallback);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const handleNavClick = (id: string) => {
     setActiveTab(id);
@@ -94,20 +125,23 @@ export const Layout: React.FC<NavbarProps> = ({
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full bg-[#125938] text-white placeholder-emerald-200 pl-11 pr-4 py-2.5 rounded-lg border-2 border-[#308C50] focus:outline-none focus:border-[#8C4580] text-sm font-medium"
                 />
-                {plateMatches.length > 0 && (
+                {searchResults.length > 0 && (
                   <div className="absolute left-0 right-0 top-12 bg-white text-gray-900 rounded-xl shadow-2xl border-2 border-[#06402F] p-2 z-50 max-h-60 overflow-y-auto">
-                    <p className="text-[10px] font-black uppercase text-gray-400 px-2 py-1">Placas / Veículos Encontrados:</p>
-                    {plateMatches.map((v) => (
+                    <p className="text-[10px] font-black uppercase text-gray-400 px-2 py-1">Placas / Clientes / Veículos Encontrados:</p>
+                    {searchResults.map((v) => (
                       <div
                         key={v.id}
                         onClick={() => {
                           setActiveTab('veiculos');
                           setSearchTerm(v.placa);
                         }}
-                        className="p-2 hover:bg-emerald-50 rounded-lg cursor-pointer flex items-center justify-between text-xs font-bold"
+                        className="p-2 hover:bg-emerald-50 rounded-lg cursor-pointer flex items-center justify-between text-xs font-bold border-b border-gray-100 last:border-0"
                       >
-                        <span className="font-mono font-black text-[#8C4580] bg-purple-50 px-2 py-0.5 rounded border">{v.placa}</span>
-                        <span className="text-[#06402F]">{v.modelo}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-[#8C4580] bg-purple-50 px-2 py-0.5 rounded border border-purple-200">{v.placa}</span>
+                          <span className="text-[#06402F] font-bold">{v.modelo}</span>
+                        </div>
+                        <span className="text-gray-500 text-[11px] font-semibold">{v.clientes?.nome || 'Cliente'}</span>
                       </div>
                     ))}
                   </div>
