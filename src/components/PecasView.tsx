@@ -28,6 +28,7 @@ export const PecasView: React.FC<PecasViewProps> = ({
   const [precoMedio, setPrecoMedio] = useState<number | ''>('');
   const [precoMax, setPrecoMax] = useState<number | ''>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
@@ -129,20 +130,39 @@ export const PecasView: React.FC<PecasViewProps> = ({
     setIsModalOpen(true);
   };
 
-  const updatePartStockBalance = async (pecaId: number, delta: number) => {
-    const part = pecas.find((p) => p.id === pecaId);
-    const currentSaldo = part?.saldo_estoque || 0;
-    const newSaldo = Math.max(0, currentSaldo + delta);
-
+  const atualizar_estoque = async (pecaId: number, novoSaldo: number, motivo: string = 'Movimentação de estoque') => {
+    const safeSaldo = Math.max(0, novoSaldo);
     setPecas((prev) =>
-      prev.map((p) => (p.id === pecaId ? { ...p, saldo_estoque: newSaldo } : p))
+      prev.map((p) => (p.id === pecaId ? { ...p, saldo_estoque: safeSaldo } : p))
     );
 
     try {
-      await supabase.from('pecas').update({ saldo_estoque: newSaldo }).eq('id', pecaId);
+      const { error: rpcErr } = await supabase.rpc('atualizar_estoque', {
+        p_peca_id: pecaId,
+        p_novo_saldo: safeSaldo,
+      });
+
+      if (rpcErr) {
+        await supabase.from('pecas').update({ saldo_estoque: safeSaldo }).eq('id', pecaId);
+      }
     } catch (err) {
-      console.warn('Atualizacao de saldo_estoque na tabela pecas falhou:', err);
+      await supabase.from('pecas').update({ saldo_estoque: safeSaldo }).eq('id', pecaId);
     }
+
+    const { logAuditEvent } = await import('../lib/utils');
+    await logAuditEvent(
+      userProfile.id,
+      'ATUALIZAR_ESTOQUE',
+      `Peça ID ${pecaId}: Saldo definido para ${safeSaldo} (${motivo})`,
+      'pecas'
+    );
+  };
+
+  const updatePartStockBalance = async (pecaId: number, delta: number, motivo: string = 'Ajuste de quantidade') => {
+    const part = pecas.find((p) => p.id === pecaId);
+    const currentSaldo = part?.saldo_estoque || 0;
+    const newSaldo = currentSaldo + delta;
+    await atualizar_estoque(pecaId, newSaldo, motivo);
   };
 
   const handleDeletePeca = async (id: number) => {
@@ -253,7 +273,10 @@ export const PecasView: React.FC<PecasViewProps> = ({
       });
 
       const delta = tipoMovimentacao === 'ENTRADA' ? Number(quantidade) : -Number(quantidade);
-      await updatePartStockBalance(selectedPeca.id, delta);
+      await updatePartStockBalance(selectedPeca.id, delta, `Movimentação ${tipoMovimentacao}`);
+
+      setSuccessToast('✓ Movimentação de estoque e saldo atualizados!');
+      setTimeout(() => setSuccessToast(null), 3500);
 
       setIsStockModalOpen(false);
       fetchPecas();
@@ -292,7 +315,10 @@ export const PecasView: React.FC<PecasViewProps> = ({
         fornecedor: bindFornecedor.trim() || null,
       });
 
-      await updatePartStockBalance(Number(selectedPecaToBindId), -Number(bindQuantidade));
+      await updatePartStockBalance(Number(selectedPecaToBindId), -Number(bindQuantidade), 'Baixa por vínculo na OS');
+
+      setSuccessToast('✓ Peça vinculada à OS e baixa de estoque efetuada!');
+      setTimeout(() => setSuccessToast(null), 3500);
 
       setSelectedPecaToBindId('');
       setBindQuantidade(1);
@@ -316,6 +342,17 @@ export const PecasView: React.FC<PecasViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {successToast && (
+        <div className="p-4 bg-emerald-100 border-2 border-emerald-600 rounded-2xl text-emerald-950 font-black flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-3">
+            <TrendingUp className="h-6 w-6 text-emerald-700 flex-shrink-0" />
+            <span>{successToast}</span>
+          </div>
+          <button onClick={() => setSuccessToast(null)} className="text-emerald-800">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border-2 border-[#06402F] shadow">
         <div>
           <h2 className="text-2xl font-black text-[#06402F] font-serif flex items-center gap-3">

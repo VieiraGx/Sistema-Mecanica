@@ -20,6 +20,28 @@ export const matchesNormalizedSearch = (target?: string | null, search?: string 
   return searchTerms.every((term) => normalizeText(target).includes(normalizeText(term)));
 };
 
+export const logAuditEvent = async (
+  usuarioId: string,
+  acao: string,
+  detalhes: string,
+  tabela: string = 'geral'
+) => {
+  const timestamp = new Date().toISOString();
+  console.info(`[AUDITORIA LOG] [${timestamp}] User: ${usuarioId} | Acao: ${acao} | Detalhes: ${detalhes}`);
+  try {
+    const { supabase } = await import('./supabase');
+    await supabase.from('auditoria_logs').insert({
+      usuario_id: usuarioId,
+      acao: acao,
+      detalhes: detalhes,
+      tabela_afetada: tabela,
+      created_at: timestamp,
+    });
+  } catch (err) {
+    console.warn('Registro de log em auditoria_logs em nuvem falhou, mantido localmente:', err);
+  }
+};
+
 export const generateLaudoText = (os: any, osPecas: any[] = []): string => {
   const dateStr = new Date(os.created_at || Date.now()).toLocaleDateString('pt-BR');
   const totalStr = (os.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });

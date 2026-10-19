@@ -225,6 +225,14 @@ export const OsView: React.FC<OsViewProps> = ({
         observacao: 'Ordem de serviço aberta no sistema.',
       });
 
+      const { logAuditEvent } = await import('../lib/utils');
+      await logAuditEvent(
+        userProfile.id,
+        'CRIAR_OS',
+        `Nova OS criada: ${numeroOs} para cliente_id: ${clienteId} | veiculo_id: ${veiculoId}`,
+        'ordens_servico'
+      );
+
       setIsNewOsModalOpen(false);
       fetchData();
     } catch (err: any) {
@@ -276,6 +284,14 @@ export const OsView: React.FC<OsViewProps> = ({
         status_novo: selectedNextStatus,
         observacao: statusObservacao.trim() || `Status alterado para ${STATUS_MAP[selectedNextStatus].label}`,
       });
+
+      const { logAuditEvent } = await import('../lib/utils');
+      await logAuditEvent(
+        userProfile.id,
+        'MUDAR_STATUS_OS',
+        `OS ${targetOs.numero_os} alterada de ${targetOs.status} para ${selectedNextStatus}`,
+        'ordens_servico'
+      );
 
       setIsStatusModalOpen(false);
       fetchData();
@@ -329,8 +345,26 @@ export const OsView: React.FC<OsViewProps> = ({
     );
   });
 
+  const readyOsCount = ordens.filter(
+    (o) => o.status === 'PRONTO_PARA_ENTREGA'
+  ).length;
+
   return (
     <div className="space-y-6">
+      {readyOsCount > 0 && (
+        <div className="p-4 bg-emerald-600 text-white font-black rounded-2xl flex items-center justify-between shadow-lg animate-pulse">
+          <div className="flex items-center gap-3">
+            <CheckCircle className="h-6 w-6 text-emerald-200" />
+            <span>🎉 {readyOsCount} veículo(s) com OS concluída e PRONTA para entrega ao cliente!</span>
+          </div>
+          <button
+            onClick={() => setStatusFilter('PRONTO_PARA_ENTREGA')}
+            className="px-3 py-1 bg-white text-emerald-950 font-black rounded-xl text-xs hover:bg-emerald-100"
+          >
+            VER PRONTAS
+          </button>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border-2 border-[#06402F] shadow">
         <div>
           <h2 className="text-2xl font-black text-[#06402F] font-serif flex items-center gap-3">

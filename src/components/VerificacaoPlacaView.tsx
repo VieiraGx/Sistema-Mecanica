@@ -26,6 +26,7 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
   const [observacao, setObservacao] = useState('');
   const [statusSeguranca, setStatusSeguranca] = useState<'SEGURO' | 'ALERTA_FURTO'>('SEGURO');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const isAdmin = userProfile.perfil === 'ADMINISTRADOR';
@@ -118,17 +119,32 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
         : observacao.trim() || 'Verificação de placa ok.';
 
       if (editingVerificacao) {
-        await supabase
+        const { error: updateErr } = await supabase
           .from('verificacoes_placa')
           .update({
             observacao: finalObs,
+            veiculo_id: Number(selectedVeiculoId),
           })
           .eq('id', editingVerificacao.id);
+
+        if (updateErr) {
+          await supabase
+            .from('verificacoes_placa')
+            .update({ observacao: finalObs })
+            .eq('id', editingVerificacao.id);
+        }
+
+        const targetVeic = veiculos.find((v) => v.id === Number(selectedVeiculoId));
 
         setVerificacoes((prev) =>
           prev.map((item) =>
             item.id === editingVerificacao.id
-              ? { ...item, observacao: finalObs }
+              ? {
+                  ...item,
+                  observacao: finalObs,
+                  veiculo_id: Number(selectedVeiculoId),
+                  veiculos: targetVeic || item.veiculos,
+                }
               : item
           )
         );
@@ -166,6 +182,17 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
         .update({ placa_verificada: true })
         .eq('veiculo_id', Number(selectedVeiculoId));
 
+      const { logAuditEvent } = await import('../lib/utils');
+      await logAuditEvent(
+        userProfile.id,
+        editingVerificacao ? 'EDICAO_VERIFICACAO_PLACA' : 'NOVA_VERIFICACAO_PLACA',
+        `Consulta de placa veiculo_id: ${selectedVeiculoId} | Obs: ${finalObs}`,
+        'verificacoes_placa'
+      );
+
+      setSuccessToast('✓ Verificação de placa e parecer salvos com sucesso!');
+      setTimeout(() => setSuccessToast(null), 3500);
+
       setIsModalOpen(false);
       if (onClearTargetVeiculo) onClearTargetVeiculo();
       fetchData();
@@ -201,6 +228,18 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
 
   return (
     <div className="space-y-6">
+      {successToast && (
+        <div className="p-4 bg-emerald-100 border-2 border-emerald-600 rounded-2xl text-emerald-950 font-black flex items-center justify-between shadow-lg">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="h-6 w-6 text-emerald-700 flex-shrink-0" />
+            <span>{successToast}</span>
+          </div>
+          <button onClick={() => setSuccessToast(null)} className="text-emerald-800">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border-2 border-[#06402F] shadow">
         <div>
           <h2 className="text-2xl font-black text-[#06402F] font-serif flex items-center gap-3">

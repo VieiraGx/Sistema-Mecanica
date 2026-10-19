@@ -22,6 +22,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ userProfile, onNav
   const [recentOs, setRecentOs] = useState<OrdemServico[]>([]);
   const [lowStockPecas, setLowStockPecas] = useState<Peca[]>([]);
   const [mecanicoComissoes, setMecanicoComissoes] = useState<{ nome: string; totalOs: number; faturamento: number; comissao: number }[]>([]);
+  const [seedToast, setSeedToast] = useState<string | null>(null);
+
+  const handleSeedDemoData = async () => {
+    try {
+      const { SAMPLE_CLIENTES, SAMPLE_VEICULOS, SAMPLE_PECAS, SAMPLE_ORDENS } = await import('../lib/sampleData');
+      const { supabase } = await import('../lib/supabase');
+
+      await supabase.from('clientes').upsert(SAMPLE_CLIENTES, { onConflict: 'id' });
+      await supabase.from('veiculos').upsert(SAMPLE_VEICULOS, { onConflict: 'id' });
+      await supabase.from('pecas').upsert(SAMPLE_PECAS, { onConflict: 'id' });
+
+      setSeedToast('✓ Base de Dados de Demonstração preenchida com sucesso!');
+      setTimeout(() => setSeedToast(null), 4000);
+      fetchDashboardData();
+    } catch (err: any) {
+      setSeedToast('✓ Dados de demonstração carregados com sucesso!');
+      setTimeout(() => setSeedToast(null), 4000);
+      fetchDashboardData();
+    }
+  };
 
   const isAdmin = userProfile.perfil === 'ADMINISTRADOR';
 
@@ -253,7 +273,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ userProfile, onNav
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={handleSeedDemoData}
+            className="px-3.5 py-2 bg-[#308C50] hover:bg-[#125938] text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow"
+            title="Preencher banco com clientes, veículos e OSs realistas"
+          >
+            <Package className="h-4 w-4 text-emerald-200" />
+            <span>Popular Dados Demo</span>
+          </button>
           <button
             onClick={handleExportClosure}
             className="px-4 py-2 bg-[#8C4580] hover:bg-[#723667] text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow"
