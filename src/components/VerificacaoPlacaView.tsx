@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { VerificacaoPlaca, Veiculo, Profile } from '../types/database';
-import { ShieldCheck, Plus, Search, AlertCircle, X, CheckCircle2, FileText, Calendar, MapPin, SearchCode, Edit2, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Plus, Search, AlertCircle, X, CheckCircle2, FileText, Calendar, MapPin, SearchCode, Edit2, AlertTriangle, Trash2 } from 'lucide-react';
 import { SAMPLE_VERIFICACOES, SAMPLE_VEICULOS } from '../lib/sampleData';
 
 interface VerificacaoPlacaViewProps {
@@ -77,6 +77,18 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
     setStatusSeguranca('SEGURO');
     setErrorMsg(null);
     setIsModalOpen(true);
+  };
+
+  const handleDeleteVerificacao = async (id: number) => {
+    if (!window.confirm('Tem certeza que deseja excluir esta verificação de placa do histórico?')) return;
+    try {
+      await supabase.from('verificacoes_placa').delete().eq('id', id);
+      setVerificacoes((prev) => prev.filter((item) => item.id !== id));
+      setSuccessToast('✓ Verificação de placa excluída do histórico!');
+      setTimeout(() => setSuccessToast(null), 3000);
+    } catch (err: any) {
+      console.error('Erro ao excluir verificação de placa:', err.message);
+    }
   };
 
   const openEditModal = (v: VerificacaoPlaca) => {
@@ -335,6 +347,13 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
                           title="Modificar verificação"
                         >
                           <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteVerificacao(v.id)}
+                          className="p-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg"
+                          title="Excluir verificação antiga"
+                        >
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </td>

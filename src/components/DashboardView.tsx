@@ -48,14 +48,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ userProfile, onNav
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const { data: osData, error: osError } = await supabase
-        .from('ordens_servico')
-        .select('*, clientes(*), veiculos(*)')
-        .order('id', { ascending: false });
+      const [osRes, pecasRes, profRes] = await Promise.all([
+        supabase
+          .from('ordens_servico')
+          .select('*, clientes(*), veiculos(*), responsavel:responsavel_id(*)'),
+        supabase.from('pecas').select('*').order('nome', { ascending: true }),
+        supabase.from('profiles').select('*'),
+      ]);
 
-      if (osError) throw osError;
-
-      const allOs = osData || [];
+      const allOs = osRes.data || [];
+      const realPecas = pecasRes.data || [];
       const openOs = allOs.filter((o) => o.status !== 'ENTREGUE');
       setTotalOsAberta(openOs.length);
 
@@ -63,52 +65,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ userProfile, onNav
       const overdueOs = openOs.filter((o) => o.previsao_entrega && new Date(o.previsao_entrega) < now);
       setTotalOsAtrasada(overdueOs.length);
 
+      // Filter low stock pecas ONLY from real active items in database
+      const activeLowStock = realPecas.filter((p) => (p.saldo_estoque || 0) <= 15);
+      setLowStockPecas(activeLowStock);
+
       const osIds = allOs.map((o) => o.id);
       let totalRev = 0;
       let monthRev = 0;
+      let dayRev = 0;
 
       if (osIds.length > 0) {
         const { data: servicos } = await supabase.from('os_servicos').select('*').in('os_id', osIds);
-        const { data: pecas } = await supabase.from('os_pecas').select('*, pecas(*)').in('os_id', osIds);
-
-        const pecasCountMap: Record<string, { nome: string; codigo: string; qtd: number }> = {};
-
-        (pecas || []).forEach((p: any) => {
-          const key = p.peca_id;
-          if (!pecasCountMap[key]) {
-            pecasCountMap[key] = {
-              nome: p.pecas?.nome || 'Peça',
-              codigo: p.pecas?.codigo_interno || 'PEC',
-              qtd: 0,
-            };
-          }
-          pecasCountMap[key].qtd += Number(p.quantidade || 0);
-        });
-
-        const sortedParts = Object.values(pecasCountMap)
-          .sort((a, b) => b.qtd - a.qtd)
-          .slice(0, 5)
-          .map((item) => ({
-            nome: item.nome,
-            codigo: item.codigo,
-            totalQtd: item.qtd,
-          }));
+        const { data: pecasOS } = await supabase.from('os_pecas').select('*').in('os_id', osIds);
 
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-        let dayRev = 0;
 
         allOs.forEach((os) => {
           const sumServices = (servicos || [])
             .filter((s: any) => s.os_id === os.id)
             .reduce((acc: number, curr: any) => acc + Number(curr.valor || 0), 0);
 
-          const sumParts = (pecas || [])
+          const sumParts = (pecasOS || [])
             .filter((p: any) => p.os_id === os.id)
             .reduce((acc: number, curr: any) => acc + Number(curr.quantidade || 0) * Number(curr.preco_unitario || 0), 0);
 
           const osTotal = Number(os.valor_mao_obra || 0) + sumServices + sumParts;
+          os.valor_total = osTotal;
           totalRev += osTotal;
 
           if (new Date(os.created_at) >= startOfMonth) {
@@ -118,25 +101,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ userProfile, onNav
             dayRev += osTotal;
           }
         });
-
-        setFaturamentoDia(dayRev > 0 ? dayRev : 450);
       }
 
-      setFaturamentoTotal(totalRev > 0 ? totalRev : 2450);
-      setFaturamentoMes(monthRev > 0 ? monthRev : 2450);
-      setRecentOs(allOs.length > 0 ? allOs.slice(0, 5) : SAMPLE_ORDENS);
-      setLowStockPecas(SAMPLE_PECAS.filter((p) => (p.saldo_estoque || 0) <= 15));
+      setFaturamentoDia(dayRev);
+      setFaturamentoTotal(totalRev);
+      setFaturamentoMes(monthRev);
+      setRecentOs(allOs.slice(0, 5));
 
-      const listToCalc = allOs.length > 0 ? allOs : SAMPLE_ORDENS;
+      // Calculate commissions dynamically from real database records
       const commMap: Record<string, { nome: string; totalOs: number; faturamento: number }> = {};
 
-      listToCalc.forEach((os) => {
-        const mecNome = os.responsavel?.nome || 'João Santos';
+      allOs.forEach((os) => {
+        const mecNome = os.responsavel?.nome || 'Mecânico Não Atribuído';
         if (!commMap[mecNome]) {
           commMap[mecNome] = { nome: mecNome, totalOs: 0, faturamento: 0 };
         }
         commMap[mecNome].totalOs += 1;
-        commMap[mecNome].faturamento += (os.valor_total || 800);
+        commMap[mecNome].faturamento += Number(os.valor_total || 0);
       });
 
       const commList = Object.values(commMap).map((item) => ({

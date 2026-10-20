@@ -72,6 +72,10 @@ export const OsView: React.FC<OsViewProps> = ({
   const [selectedNextStatus, setSelectedNextStatus] = useState<StatusOS | ''>('');
   const [statusObservacao, setStatusObservacao] = useState('');
 
+  const [isEditValueModalOpen, setIsEditValueModalOpen] = useState(false);
+  const [editValueOs, setEditValueOs] = useState<OrdemServico | null>(null);
+  const [newValorMaoObra, setNewValorMaoObra] = useState<number>(0);
+
   const isAdmin = userProfile.perfil === 'ADMINISTRADOR';
 
   const fetchData = async () => {
@@ -237,6 +241,46 @@ export const OsView: React.FC<OsViewProps> = ({
       fetchData();
     } catch (err: any) {
       setErrorMsg(err.message || 'Erro ao criar ordem de serviço.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const openEditValueModal = (os: OrdemServico) => {
+    setEditValueOs(os);
+    setNewValorMaoObra(os.valor_mao_obra || 0);
+    setErrorMsg(null);
+    setIsEditValueModalOpen(true);
+  };
+
+  const handleSaveOsValue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editValueOs) return;
+
+    setSubmitting(true);
+    setErrorMsg(null);
+
+    try {
+      const val = Number(newValorMaoObra || 0);
+      const { error: updateErr } = await supabase
+        .from('ordens_servico')
+        .update({ valor_mao_obra: val })
+        .eq('id', editValueOs.id);
+
+      if (updateErr) throw updateErr;
+
+      const { logAuditEvent } = await import('../lib/utils');
+      await logAuditEvent(
+        userProfile.id,
+        'EDITAR_VALOR_OS',
+        `Valor da mão de obra da OS ${editValueOs.numero_os} alterado para R$ ${val.toFixed(2)}`,
+        'ordens_servico'
+      );
+
+      setIsEditValueModalOpen(false);
+      fetchData();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Erro ao alterar valor da OS.');
     } finally {
       setSubmitting(false);
     }
@@ -549,6 +593,15 @@ export const OsView: React.FC<OsViewProps> = ({
                               Status
                             </button>
 
+                            <button
+                              onClick={() => openEditValueModal(os)}
+                              className="px-2 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
+                              title="Alterar Valor Mão de Obra da OS"
+                            >
+                              <DollarSign className="h-3.5 w-3.5" />
+                              Valor
+                            </button>
+
                             <div className="flex gap-1">
                               <button
                                 onClick={() => handleDownloadLaudo(os)}
@@ -846,6 +899,70 @@ export const OsView: React.FC<OsViewProps> = ({
                   className="flex-1 btn-touch bg-[#8C4580] hover:bg-[#723667] text-white font-bold rounded-xl shadow"
                 >
                   {submitting ? 'Criando OS...' : 'ABRIR ORDEM DE SERVIÇO'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {isEditValueModalOpen && editValueOs && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-[#F7F7E6] rounded-2xl border-4 border-[#06402F] shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="bg-[#032326] p-5 text-white flex items-center justify-between border-b-4 border-[#8C4580]">
+              <div>
+                <span className="font-mono font-black text-xs text-[#8C4580] uppercase">
+                  {editValueOs.numero_os}
+                </span>
+                <h3 className="text-xl font-black font-serif mt-0.5">
+                  Alterar Valor da Ordem de Serviço
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsEditValueModalOpen(false)}
+                className="text-white hover:text-emerald-200"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveOsValue} className="p-6 space-y-4">
+              {errorMsg && (
+                <div className="p-3 bg-red-100 border-2 border-red-500 rounded-xl text-red-900 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-extrabold uppercase text-[#06402F] mb-1">
+                  Novo Valor da Mão de Obra (R$) *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                  value={newValorMaoObra}
+                  onChange={(e) => setNewValorMaoObra(Number(e.target.value))}
+                  className="w-full bg-white border-2 border-[#125938] rounded-xl px-4 py-3 font-mono font-black text-xl text-[#06402F] focus:outline-none focus:border-[#8C4580]"
+                />
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsEditValueModalOpen(false)}
+                  className="flex-1 py-3 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded-xl"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 btn-touch bg-[#8C4580] hover:bg-[#723667] text-white font-bold rounded-xl shadow"
+                >
+                  {submitting ? 'Salvando...' : 'SALVAR NOVO VALOR'}
                 </button>
               </div>
             </form>
