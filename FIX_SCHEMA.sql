@@ -56,9 +56,9 @@ CREATE POLICY "Permitir atualizacao de perfil proprio ou admin"
 -- 2. VERIFICACAO DE PLACA (VERIFICACOES_PLACA)
 -- ------------------------------------------------------------------------------
 
--- Remover trigger de imutabilidade se existir, permitindo edicao e exclusao pelo app
+-- Remover funcao e triggers dependentes de imutabilidade com CASCADE
 DROP TRIGGER IF EXISTS bloquear_alteracao_historico ON public.verificacoes_placa;
-DROP FUNCTION IF EXISTS public.bloquear_alteracao_historico();
+DROP FUNCTION IF EXISTS public.bloquear_alteracao_historico() CASCADE;
 
 -- Atualizar Constraints de Chave Estrangeira para ON DELETE CASCADE
 ALTER TABLE public.verificacoes_placa
