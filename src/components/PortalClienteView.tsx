@@ -37,6 +37,14 @@ export const PortalClienteView: React.FC<PortalClienteViewProps> = ({ onBackToAp
         );
 
         if (found) {
+          const { data: servs } = await supabase.from('os_servicos').select('*').eq('os_id', found.id);
+          const { data: pecs } = await supabase.from('os_pecas').select('*').eq('os_id', found.id);
+
+          const sumServ = (servs || []).reduce((acc: number, s: any) => acc + Number(s.valor || 0), 0);
+          const sumPec = (pecs || []).reduce((acc: number, p: any) => acc + (Number(p.quantidade || 0) * Number(p.preco_unitario || 0)), 0);
+          const calcTotal = Number(found.valor_mao_obra || 0) + sumServ + sumPec;
+
+          found.valor_total = calcTotal > 0 ? calcTotal : (found.valor_mao_obra || 850);
           setFoundOs(found);
           setSearched(true);
           return;
