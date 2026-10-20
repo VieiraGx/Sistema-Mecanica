@@ -37,7 +37,12 @@ export const AuthView: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
           const { data, error: signUpErr } = await supabase.auth.signUp({
             email,
             password,
-            options: { data: { nome: nome.trim() } },
+            options: {
+              data: {
+                nome: nome.trim(),
+                perfil: perfil,
+              },
+            },
           });
 
           if (signUpErr) {

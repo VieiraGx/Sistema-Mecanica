@@ -10,20 +10,45 @@
 -- Função e Trigger para criação automática de perfil ao cadastrar usuário no Auth
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
+DECLARE
+  v_nome text;
+  v_perfil text;
 BEGIN
-  INSERT INTO public.profiles (id, nome, email, perfil, ativo)
-  VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'nome', split_part(NEW.email, '@', 1)),
-    NEW.email,
-    'MECANICO',
-    TRUE
-  )
-  ON CONFLICT (id) DO UPDATE
-  SET
-    nome = EXCLUDED.nome,
-    email = EXCLUDED.email,
-    updated_at = NOW();
+  v_nome := COALESCE(NEW.raw_user_meta_data->>'nome', split_part(NEW.email, '@', 1));
+  v_perfil := COALESCE(NEW.raw_user_meta_data->>'perfil', 'MECANICO');
+
+  BEGIN
+    INSERT INTO public.profiles (id, nome, email, perfil, ativo)
+    VALUES (
+      NEW.id,
+      v_nome,
+      NEW.email,
+      v_perfil::public.perfil_usuario,
+      TRUE
+    )
+    ON CONFLICT (id) DO UPDATE
+    SET
+      nome = EXCLUDED.nome,
+      email = EXCLUDED.email,
+      perfil = EXCLUDED.perfil,
+      updated_at = NOW();
+  EXCEPTION WHEN OTHERS THEN
+    -- Fallback caso o cast do enum perfil_usuario lance erro
+    INSERT INTO public.profiles (id, nome, email, perfil, ativo)
+    VALUES (
+      NEW.id,
+      v_nome,
+      NEW.email,
+      'MECANICO'::public.perfil_usuario,
+      TRUE
+    )
+    ON CONFLICT (id) DO UPDATE
+    SET
+      nome = EXCLUDED.nome,
+      email = EXCLUDED.email,
+      updated_at = NOW();
+  END;
+
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -37,18 +62,24 @@ CREATE TRIGGER on_auth_user_created
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Permitir leitura de perfis para autenticados e anon" ON public.profiles;
-CREATE POLICY "Permitir leitura de perfis para autenticados e anon"
+DROP POLICY IF EXISTS "Permitir leitura publica de profiles" ON public.profiles;
+CREATE POLICY "Permitir leitura publica de profiles"
   ON public.profiles FOR SELECT
+  TO public
   USING (true);
 
 DROP POLICY IF EXISTS "Permitir insercao de perfis" ON public.profiles;
-CREATE POLICY "Permitir insercao de perfis"
+DROP POLICY IF EXISTS "Permitir insercao publica e anonima de profiles" ON public.profiles;
+CREATE POLICY "Permitir insercao publica e anonima de profiles"
   ON public.profiles FOR INSERT
+  TO public
   WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Permitir atualizacao de perfil proprio ou admin" ON public.profiles;
-CREATE POLICY "Permitir atualizacao de perfil proprio ou admin"
+DROP POLICY IF EXISTS "Permitir atualizacao publica de profiles" ON public.profiles;
+CREATE POLICY "Permitir atualizacao publica de profiles"
   ON public.profiles FOR UPDATE
+  TO public
   USING (true);
 
 
@@ -80,6 +111,7 @@ ALTER TABLE public.verificacoes_placa ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Permitir operacoes em verificacoes_placa" ON public.verificacoes_placa;
 CREATE POLICY "Permitir operacoes em verificacoes_placa"
   ON public.verificacoes_placa FOR ALL
+  TO public
   USING (true)
   WITH CHECK (true);
 
@@ -157,10 +189,10 @@ ALTER TABLE public.os_pecas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.estoque_movimentacoes ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Permitir operacoes em pecas" ON public.pecas;
-CREATE POLICY "Permitir operacoes em pecas" ON public.pecas FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Permitir operacoes em pecas" ON public.pecas FOR ALL TO public USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Permitir operacoes em os_pecas" ON public.os_pecas;
-CREATE POLICY "Permitir operacoes em os_pecas" ON public.os_pecas FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Permitir operacoes em os_pecas" ON public.os_pecas FOR ALL TO public USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Permitir operacoes em estoque_movimentacoes" ON public.estoque_movimentacoes;
-CREATE POLICY "Permitir operacoes em estoque_movimentacoes" ON public.estoque_movimentacoes FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Permitir operacoes em estoque_movimentacoes" ON public.estoque_movimentacoes FOR ALL TO public USING (true) WITH CHECK (true);
