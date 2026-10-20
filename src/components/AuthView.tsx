@@ -67,10 +67,10 @@ export const AuthView: React.FC<AuthModalProps> = ({ onAuthSuccess }) => {
           return;
         }
 
-        setSuccessMsg('Cadastro realizado com sucesso! Acesso liberado sem necessidade de verificação.');
+        setSuccessMsg('✓ Cadastro realizado com sucesso! Redirecionando para a área do sistema...');
         setTimeout(() => {
           onAuthSuccess();
-        }, 800);
+        }, 1200);
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,

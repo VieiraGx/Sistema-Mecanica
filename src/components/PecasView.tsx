@@ -68,12 +68,15 @@ export const PecasView: React.FC<PecasViewProps> = ({
         }
       });
 
-      const pecasWithStock = (data || []).map((p) => ({
-        ...p,
-        saldo_estoque: stockMap[p.id] !== undefined ? stockMap[p.id] : (p.saldo_estoque || 0),
-      }));
-
-      setPecas(pecasWithStock.length > 0 ? pecasWithStock : SAMPLE_PECAS);
+      if (data && data.length > 0) {
+        const pecasWithStock = data.map((p) => ({
+          ...p,
+          saldo_estoque: stockMap[p.id] !== undefined ? stockMap[p.id] : (p.saldo_estoque || 0),
+        }));
+        setPecas(pecasWithStock);
+      } else {
+        setPecas(SAMPLE_PECAS);
+      }
     } catch (err: any) {
       console.warn('Usando catalogo de pecas de demonstracao:', err.message);
       setPecas(SAMPLE_PECAS);
@@ -137,14 +140,11 @@ export const PecasView: React.FC<PecasViewProps> = ({
     );
 
     try {
-      const { error: rpcErr } = await supabase.rpc('atualizar_estoque', {
+      await supabase.from('pecas').update({ saldo_estoque: safeSaldo }).eq('id', pecaId);
+      await supabase.rpc('atualizar_estoque', {
         p_peca_id: pecaId,
         p_novo_saldo: safeSaldo,
       });
-
-      if (rpcErr) {
-        await supabase.from('pecas').update({ saldo_estoque: safeSaldo }).eq('id', pecaId);
-      }
     } catch (err) {
       await supabase.from('pecas').update({ saldo_estoque: safeSaldo }).eq('id', pecaId);
     }
