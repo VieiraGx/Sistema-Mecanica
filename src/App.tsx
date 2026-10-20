@@ -125,8 +125,13 @@ export const App: React.FC = () => {
     );
   }
 
+  const handleAuthSuccess = (newSession: any, newProfile: Profile) => {
+    setSession(newSession);
+    setUserProfile(newProfile);
+  };
+
   if (!session || !userProfile) {
-    return <AuthView onAuthSuccess={() => {}} />;
+    return <AuthView onAuthSuccess={handleAuthSuccess} />;
   }
 
   return (
