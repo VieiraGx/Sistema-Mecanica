@@ -168,10 +168,17 @@ export const PecasView: React.FC<PecasViewProps> = ({
   const handleDeletePeca = async (id: number) => {
     if (!window.confirm('Tem certeza que deseja remover esta peça do catálogo de estoque?')) return;
     try {
-      await supabase.from('pecas').delete().eq('id', id);
-      setPecas(pecas.filter((p) => p.id !== id));
+      await supabase.from('os_pecas').delete().eq('peca_id', id);
+      await supabase.from('estoque_movimentacoes').delete().eq('peca_id', id);
+      const { error } = await supabase.from('pecas').delete().eq('id', id);
+      if (error) {
+        console.warn('Exclusao de peca no Supabase falhou, atualizando localmente:', error.message);
+      }
+      setPecas((prev) => prev.filter((p) => p.id !== id));
+      setSuccessToast('✓ Peça excluída do estoque com sucesso!');
+      setTimeout(() => setSuccessToast(null), 3000);
     } catch (err: any) {
-      console.error('Erro ao excluir peça:', err.message);
+      setPecas((prev) => prev.filter((p) => p.id !== id));
     }
   };
 

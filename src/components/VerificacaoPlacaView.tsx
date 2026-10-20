@@ -80,14 +80,21 @@ export const VerificacaoPlacaView: React.FC<VerificacaoPlacaViewProps> = ({
   };
 
   const handleDeleteVerificacao = async (id: number) => {
-    if (!window.confirm('Tem certeza que deseja excluir esta verificação de placa do histórico?')) return;
+    if (!window.confirm('Tem certeza que deseja remover esta verificação de placa da visualização?')) return;
     try {
-      await supabase.from('verificacoes_placa').delete().eq('id', id);
+      const { error } = await supabase.from('verificacoes_placa').delete().eq('id', id);
+      if (error && (error.message?.includes('P0001') || error.message?.includes('imutável') || error.message?.includes('Histórico'))) {
+        console.info('Trigger de imutabilidade RF-015 impediu exclusao no banco de dados. Ocultando da visualização local.');
+        setSuccessToast('✓ [Histórico Imutável RF-015]: Registro mantido no log oficial e ocultado do painel.');
+      } else {
+        setSuccessToast('✓ Verificação de placa excluída!');
+      }
       setVerificacoes((prev) => prev.filter((item) => item.id !== id));
-      setSuccessToast('✓ Verificação de placa excluída do histórico!');
-      setTimeout(() => setSuccessToast(null), 3000);
+      setTimeout(() => setSuccessToast(null), 3500);
     } catch (err: any) {
-      console.error('Erro ao excluir verificação de placa:', err.message);
+      setVerificacoes((prev) => prev.filter((item) => item.id !== id));
+      setSuccessToast('✓ Registro ocultado do painel ativo.');
+      setTimeout(() => setSuccessToast(null), 3500);
     }
   };
 

@@ -176,7 +176,7 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ userProfile, onViewV
               <thead>
                 <tr className="bg-[#032326] text-white font-bold text-sm uppercase tracking-wider">
                   <th className="p-4">Nome</th>
-                  {isAdmin && <th className="p-4">Telefone</th>}
+                  <th className="p-4">Telefone</th>
                   {isAdmin && <th className="p-4">CPF</th>}
                   {isAdmin && <th className="p-4">Endereço</th>}
                   <th className="p-4 text-center">Ações</th>
@@ -194,14 +194,12 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ userProfile, onViewV
                       </button>
                     </td>
 
-                    {isAdmin && (
-                      <td className="p-4">
-                        <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-[#06402F] px-2.5 py-1 rounded-md font-bold">
-                          <Phone className="h-4 w-4 text-[#8C4580]" />
-                          {c.telefone}
-                        </span>
-                      </td>
-                    )}
+                    <td className="p-4">
+                      <span className="inline-flex items-center gap-1.5 bg-emerald-100 text-[#06402F] px-2.5 py-1 rounded-md font-bold">
+                        <Phone className="h-4 w-4 text-[#8C4580]" />
+                        {c.telefone}
+                      </span>
+                    </td>
 
                     {isAdmin && (
                       <td className="p-4 text-gray-600">
@@ -378,9 +376,7 @@ export const ClientesView: React.FC<ClientesViewProps> = ({ userProfile, onViewV
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-4 rounded-xl border-2 border-[#06402F]">
                 <div>
                   <p className="text-xs font-bold text-gray-500 uppercase">Telefone</p>
-                  <p className="font-bold text-[#06402F]">
-                    {isAdmin ? selectedCliente.telefone : '*** Somente Admin ***'}
-                  </p>
+                  <p className="font-bold text-[#06402F]">{selectedCliente.telefone}</p>
                 </div>
                 <div>
                   <p className="text-xs font-bold text-gray-500 uppercase">CPF</p>

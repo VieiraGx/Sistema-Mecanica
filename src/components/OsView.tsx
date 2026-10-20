@@ -584,65 +584,65 @@ export const OsView: React.FC<OsViewProps> = ({
                             </div>
                           </div>
 
-                          <div className="pt-2 flex items-center justify-between gap-1 border-t border-gray-100">
+                          <div className="pt-2.5 border-t border-gray-200 flex flex-wrap items-center gap-1.5">
                             <button
                               onClick={() => openChangeStatusModal(os)}
-                              className="px-2.5 py-1.5 bg-[#06402F] hover:bg-[#125938] text-white text-xs font-bold rounded-lg flex items-center gap-1 shadow-xs"
+                              className="px-2 py-1 bg-[#06402F] hover:bg-[#125938] text-white text-[11px] font-bold rounded-lg flex items-center gap-1 shadow-xs"
                             >
-                              <ArrowRightLeft className="h-3.5 w-3.5 text-[#8C4580]" />
+                              <ArrowRightLeft className="h-3 w-3 text-[#8C4580]" />
                               Status
                             </button>
 
                             <button
                               onClick={() => openEditValueModal(os)}
-                              className="px-2 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg flex items-center gap-1"
+                              className="px-2 py-1 bg-amber-600 hover:bg-amber-700 text-white text-[11px] font-bold rounded-lg flex items-center gap-1"
                               title="Alterar Valor Mão de Obra da OS"
                             >
-                              <DollarSign className="h-3.5 w-3.5" />
+                              <DollarSign className="h-3 w-3" />
                               Valor
                             </button>
 
-                            <div className="flex gap-1">
-                              <button
-                                onClick={() => handleDownloadLaudo(os)}
-                                className="p-1.5 bg-[#06402F] text-white hover:bg-[#125938] rounded-lg text-xs font-bold"
-                                title="Gerar Orçamento / Laudo PDF"
-                              >
-                                <Download className="h-3.5 w-3.5 text-[#8C4580]" />
-                              </button>
+                            <button
+                              onClick={() => handleDownloadLaudo(os)}
+                              className="p-1.5 bg-[#06402F] text-white hover:bg-[#125938] rounded-lg text-[11px] font-bold"
+                              title="Gerar Orçamento / Laudo PDF"
+                            >
+                              <Download className="h-3 w-3 text-[#8C4580]" />
+                            </button>
 
-                              {os.clientes?.telefone && (
-                                <a
-                                  href={`https://wa.me/55${os.clientes.telefone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                                    `Olá ${os.clientes.nome}, aqui é da Shibuya Motores. A sua ordem de serviço ${os.numero_os} do veículo ${os.veiculos?.modelo} [${os.veiculos?.placa}] está atualmente: ${STATUS_MAP[os.status].label}. Valor total: R$ ${(os.valor_total || 0).toFixed(2)}.`
-                                  )}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1"
-                                  title="Notificar Cliente via WhatsApp"
-                                >
-                                  <MessageCircle className="h-3.5 w-3.5" />
-                                </a>
-                              )}
-                              {onOpenTimelineModal && (
-                                <button
-                                  onClick={() => onOpenTimelineModal(os)}
-                                  className="p-1.5 bg-purple-100 text-purple-800 hover:bg-purple-200 rounded-lg text-xs font-bold"
-                                  title="Linha do Tempo / Feed"
-                                >
-                                  Feed
-                                </button>
-                              )}
-                              {onOpenPartsModal && (
-                                <button
-                                  onClick={() => onOpenPartsModal(os)}
-                                  className="p-1.5 bg-emerald-100 text-[#06402F] hover:bg-emerald-200 rounded-lg text-xs font-bold"
-                                  title="Vincular Peças"
-                                >
-                                  Peças
-                                </button>
-                              )}
-                            </div>
+                            {os.clientes?.telefone && (
+                              <a
+                                href={`https://wa.me/55${os.clientes.telefone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                  `Olá ${os.clientes.nome}, aqui é da Shibuya Motores. A sua ordem de serviço ${os.numero_os} do veículo ${os.veiculos?.modelo} [${os.veiculos?.placa}] está atualmente: ${STATUS_MAP[os.status].label}. Valor total: R$ ${(os.valor_total || 0).toFixed(2)}.`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-[11px] font-bold flex items-center gap-1"
+                                title="Notificar Cliente via WhatsApp"
+                              >
+                                <MessageCircle className="h-3 w-3" />
+                              </a>
+                            )}
+
+                            {onOpenTimelineModal && (
+                              <button
+                                onClick={() => onOpenTimelineModal(os)}
+                                className="px-2 py-1 bg-purple-100 text-purple-800 hover:bg-purple-200 rounded-lg text-[11px] font-bold"
+                                title="Linha do Tempo / Feed"
+                              >
+                                Feed
+                              </button>
+                            )}
+
+                            {onOpenPartsModal && (
+                              <button
+                                onClick={() => onOpenPartsModal(os)}
+                                className="px-2 py-1 bg-emerald-100 text-[#06402F] hover:bg-emerald-200 rounded-lg text-[11px] font-bold"
+                                title="Vincular Peças"
+                              >
+                                Peças
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))
